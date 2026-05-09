@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Kaspa Consensus — Live BlockDAG</title>
+    <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+        background: #060a10; 
+        overflow: hidden; 
+        position: fixed; 
+        width: 100%; 
+        height: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    }
+    canvas { display: block; position: absolute; top: 0; left: 0; }
+    
+    #title {
+        position: fixed; 
+        top: 20px; 
+        left: 20px;
+        color: rgba(180,200,220,0.35); 
+        font-size: 11px; 
+        font-weight: 300;
+        letter-spacing: 2.5px;
+        pointer-events: none; 
+        z-index: 10;
+        text-transform: uppercase;
+    }
+    
+    .donate-btn {
+        position: fixed; 
+        bottom: 36px; 
+        right: 20px; 
+        z-index: 20;
+        background: rgba(160,200,220,0.04); 
+        color: rgba(160,200,220,0.35);
+        border: 0.5px solid rgba(160,200,220,0.1); 
+        padding: 8px 18px;
+        font-size: 9px; 
+        font-weight: 300;
+        letter-spacing: 1.2px;
+        border-radius: 20px;
+        text-decoration: none;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        transition: all 0.4s ease;
+        cursor: pointer;
+    }
+    
+    .donate-btn:hover {
+        background: rgba(160,200,220,0.08);
+        color: rgba(160,200,220,0.55);
+        border-color: rgba(160,200,220,0.2);
+    }
+    
+    #donate-panel {
+        display: none; 
+        position: fixed; 
+        bottom: 90px; 
+        right: 20px;
+        z-index: 25; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+        background: rgba(12,20,30,0.7); 
+        border: 0.5px solid rgba(160,200,220,0.08);
+        border-radius: 16px; 
+        padding: 22px 24px; 
+        max-width: 240px;
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        transition: opacity 0.3s ease;
+    }
+    
+    #donate-panel .donate-title {
+    color: rgba(160,200,220,0.45); 
+    font-size: 10px; 
+    font-weight: 300;
+    margin-bottom: 14px; 
+    letter-spacing: 1px;
+    line-height: 1.6;
+}
+    
+    
+    #donate-panel .donate-row {
+        display: flex; 
+        align-items: center; 
+        gap: 14px; 
+        margin-bottom: 14px;
+    }
+    
+    #donate-panel .qr-img {
+        width: 52px; 
+        height: 52px; 
+        opacity: 0.4; 
+        border-radius: 8px; 
+        flex-shrink: 0;
+    }
+    #donate-panel .donate-address {
+    color: rgba(180,210,230,0.4); 
+    font-size: 6px; 
+    word-break: break-all; 
+    line-height: 1.8;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+}
+    
+    
+    #donate-panel .donate-footer {
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between;
+    }
+    #donate-panel .donate-link {
+    color: rgba(180,210,230,0.45); 
+    font-size: 7px; 
+    text-decoration: none; 
+    font-weight: 300;
+    letter-spacing: 0.5px;
+}
+    
+    
+    #donate-panel .donate-close {
+        color: rgba(160,200,220,0.25); 
+        font-size: 11px; 
+        cursor: pointer;
+        font-weight: 300;
+    }
+   
+    
+/* ── INFO PANEL SYSTEM ── */
+.info-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 30;
+    background: rgba(160,200,220,0.04);
+    color: rgba(160,200,220,0.35);
+    border: 0.5px solid rgba(160,200,220,0.08);
+    padding: 8px 16px;
+    font-size: 9px;
+    font-weight: 300;
+    letter-spacing: 1.2px;
+    border-radius: 20px;
+    cursor: pointer;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: all 0.5s ease;
+    font-family: inherit;
+    text-decoration: none;
+}
+.info-btn:hover {
+    background: rgba(160,200,220,0.08);
+    color: rgba(200,220,240,0.6);
+    border-color: rgba(160,200,220,0.18);
+    box-shadow: 0 0 30px rgba(140,180,220,0.06);
+}
+
+#info-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(4,8,16,0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+}
+#info-overlay.active {
+    display: flex;
+}
+
+#info-panel {
+    background: rgba(10,18,30,0.75);
+    border: 0.5px solid rgba(160,200,220,0.1);
+    border-radius: 22px;
+    padding: 32px 36px;
+    max-width: 420px;
+    width: 90%;
+    max-height: 75vh;
+    overflow-y: auto; 
+    scrollbar-width: none; 
+    -ms-overflow-style: none;
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(160,200,220,0.04);
+    animation: panelIn 0.6s ease;
+    position: relative;
+}
+#info-panel::-webkit-scrollbar { display: none; }
+
+@keyframes panelIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#info-panel .section {
+    margin-bottom: 22px;
+    animation: fadeSeq 0.5s ease backwards;
+}
+#info-panel .section:nth-child(1) { animation-delay: 0.1s; }
+#info-panel .section:nth-child(2) { animation-delay: 0.2s; }
+#info-panel .section:nth-child(3) { animation-delay: 0.3s; }
+#info-panel .section:nth-child(4) { animation-delay: 0.4s; }
+#info-panel .section:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes fadeSeq {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+#info-panel .sec-heading {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(150,180,200,0.45);
+    margin-bottom: 8px;
+    font-weight: 400;
+}
+
+#info-panel .sec-text {
+    font-size: 10px;
+    line-height: 1.8;
+    color: rgba(180,200,220,0.6);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+}
+
+#info-panel .highlight-gold {
+    color: rgba(255,210,140,0.7);
+}
+#info-panel .highlight-violet {
+    color: rgba(150,130,210,0.7);
+}
+#info-panel .highlight-cyan {
+    color: rgba(110,200,220,0.65);
+}
+
+#info-panel .divider {
+    height: 0.5px;
+    background: rgba(160,200,220,0.06);
+    margin: 18px 0;
+}
+
+#info-panel .close-btn {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    color: rgba(160,200,220,0.3);
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 300;
+    transition: color 0.3s;
+}
+#info-panel .close-btn:hover {
+    color: rgba(200,220,240,0.55);
+}
+
+#info-panel .disclaimer {
+    font-size: 8px;
+    color: rgba(160,190,210,0.5);
+    line-height: 1.7;
+    letter-spacing: 0.4px;
+    margin-top: 16px;
+}
+
+    
+</style>
+
+</head>
+<body>
+  <div id="title">Kaspa Consensus</div>
+
+<a href="javascript:void(0)" class="info-btn" 
+   onclick="document.getElementById('info-overlay').classList.add('active');">
+    Guide
+</a>
+<a href="javascript:void(0)" class="donate-btn" 
+   onclick="var p=document.getElementById('donate-panel');p.style.display='block';this.style.display='none';">
+    Donate
+</a>
+
+<div id="donate-panel">
+    <div class="donate-title">If you enjoy this project, Donations are appreciated!<br>Every $KAS Counts.</div>
+    <div class="donate-row">
+        <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=kaspa:qp4ljl85vxf6wfj5m46txm9rdnnxdrjwm53wzjhh2we83u2fs8xm5mk5rknv0">
+        <div class="donate-address">kaspa:qp4ljl85vxf6wfj5m46txm9rdnnxdrjwm53wzjhh2we83u2fs8xm5mk5rknv0</div>
+    </div>
+    <div class="donate-footer">
+        <a class="donate-link" href="https://x.com/weirdtualguy" target="_blank">@weirdtualguy</a>
+        <span class="donate-close" onclick="document.getElementById('donate-panel').style.display='none';document.querySelector('.donate-btn').style.display='block';">✕</span>
+    </div>
+</div>
+    
+    <div id="info-overlay" onclick="if(event.target===this)this.classList.remove('active');">
+    <div id="info-panel">
+        <span class="close-btn" onclick="document.getElementById('info-overlay').classList.remove('active');">✕</span>
+        
+        <div class="section">
+    <div class="sec-heading">Blocks</div>
+    <div class="sec-text">
+        <span class="highlight-gold">● Gold</span> — chain block. Confirmed by consensus.<br>
+        <span class="highlight-violet">● Violet</span> — DAG block. Valid, awaiting validation.<br>
+        Glow brightness = consensus strength.<br>
+        Larger size = referenced by more blocks.<br>
+        Faint ring around block = a parent — others build on it.
+    </div>
+</div>
+        
+        
+        <div class="divider"></div>
+        
+        <div class="section">
+            <div class="sec-heading">Connections</div>
+            <div class="sec-text">
+                Threads link blocks to their parents. <span class="highlight-gold">Gold thread</span> = chain-to-chain. <span class="highlight-cyan">Blue thread</span> = DAG connection. Each has a unique fixed shape — like a fingerprint.
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="section">
+            <div class="sec-heading">Pulses <span style="font-size:10px;">◎</span></div>
+            <div class="sec-text">
+                Expanding rings = consensus confidence. <span class="highlight-gold">Golden</span> = chain. <span class="highlight-violet">Violet</span> = well-connected DAG. None = uncertain.
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="section">
+            <div class="sec-heading">Particles & Strands</div>
+            <div class="sec-text">
+                <span class="highlight-cyan">Floating dots</span> = transaction flow between blocks.<br>
+                <span class="highlight-cyan">Bottom strands</span> = transactions inside each block. More strands = heavier activity.
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <div class="section">
+            <div class="sec-heading">Warp Grid</div>
+            <div class="sec-text">
+                Background lines bend toward consensus — like gravity warping space. Strong agreement reshapes the network's geometry.
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+
+<div class="section">
+    <div class="sec-heading">Speed</div>
+    <div class="sec-text">
+        Blocks rise as they age. <span class="highlight-gold">New blocks race upward</span>. Old chain blocks slow down — settling into consensus history. The chain tip is always advancing.
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="section">
+    <div class="sec-heading">Thorns</div>
+    <div class="sec-text">
+        Small spikes radiating from blocks. <span class="highlight-gold">Parent blocks</span> (referenced by others) grow more thorns. <span class="highlight-cyan">Transaction-heavy blocks</span> also grow additional thorns. A visual sign of influence.
+    </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="disclaimer">
+            This is a partial view — a sliding window of ~70 blocks from a DAG of millions. A balance between real-time data and cinematic interpretation.
+        </div>
+    </div>
+</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
+    var dpr = Math.min(window.devicePixelRatio || 1, 2.0);
+    var W, H;
+
+    function resizeCanvas() {
+        W = window.innerWidth;
+        H = window.innerHeight;
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width = W + 'px';
+        canvas.style.height = H + 'px';
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+    }
+    resizeCanvas();
+
+    var warpX = [];
+    var warpOriginal = [];
+
+    // ── CINEMATIC CAMERA ──
+    var camera = {
+        x: 0, y: 0, zoom: 1,
+        targetX: 0, targetY: 0, targetZoom: 1,
+    };
+    var blocks = [];
+    var time = 0;
+    var blockCount = 0;
+    var difficulty = 0;
+    var fetchTimer = 0;
+    var knownHashes = {};
+    var blockMap = {};
+    
+    // ── CONSENSUS FIELD ──
+    var consensusField = [];
+    var fieldResolution = 20; // grid cells for consensus field
+    var energyParticles = [];
+    
+
+
+    window.addEventListener('resize', function() {
+        resizeCanvas();
+        buildWarp();
+        warpOriginal = warpX.slice(); // Store original straight positions
+        buildConsensusField();
+    });
+    function buildWarp() {
+    warpX = [];
+    var margin = 40;
+    var sp = 35;
+    var usableWidth = W - margin * 2;
+    var n = Math.floor(usableWidth / sp) + 1;
+    for (var i = 0; i < n; i++) {
+        warpX.push(margin + i * sp + (Math.random() - 0.5) * 4);
+    }
+    warpOriginal = warpX.slice(); // Keep originals for reference
+}
+
+    
+    buildWarp();
+
+    function buildConsensusField() {
+        consensusField = [];
+        var cols = Math.floor(W / fieldResolution) + 1;
+        var rows = Math.floor(H / fieldResolution) + 1;
+        for (var r = 0; r < rows; r++) {
+            var row = [];
+            for (var c = 0; c < cols; c++) {
+                row.push({
+                    value: 0,
+                    targetValue: 0,
+                    phase: Math.random() * Math.PI * 2,
+                    frequency: 0.5 + Math.random() * 1.5
+                });
+            }
+            consensusField.push(row);
+        }
+    }
+    buildConsensusField();
+
+    // ── API FETCH ──
+    function fetchBlockDAG() {
+        fetch('https://api.kaspa.org/info/blockdag')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                blockCount = parseInt(data.blockCount);
+                difficulty = data.difficulty;
+                updateStats();
+            })
+            .catch(function(e) {});
+    }
+
+    var lastBlueScore = 0;
+
+    function fetchBlocks() {
+        fetch('https://api.kaspa.org/info/virtual-chain-blue-score')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var currentBS = data.blueScore || 423772250;
+                if (lastBlueScore === 0 || lastBlueScore >= currentBS - 100) {
+                    lastBlueScore = currentBS - 5000;
+                }
+                var fromScore = lastBlueScore;
+                lastBlueScore = Math.min(currentBS - 50, lastBlueScore + 500);
+                return fetch('https://api.kaspa.org/blocks-from-bluescore?blueScoreGte=' + fromScore + '&limit=50&includeTransactions=true');
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var blockArray = Array.isArray(data) ? data : [];
+                if (blockArray.length > 0) {
+                    processRealBlocks(blockArray.slice(0, 999));
+                }
+            })
+            .catch(function(e) {});
+    }
+
+    // ── CONSENSUS STRENGTH CALCULATION ──
+    function calculateConsensusStrength(block) {
+        var strength = 0;
+        
+        // Base: chain blocks have higher consensus
+        if (block.isGold) {
+            strength += 0.5;
+        }
+        
+        // Parent reference count (more references = stronger consensus)
+        var parentRefs = countParentReferences(block);
+        strength += Math.min(parentRefs / 5, 1) * 0.3;
+        
+        // Child count (being referenced = validation)
+        var childCount = block._childCount || 0;
+        strength += Math.min(childCount / 3, 1) * 0.2;
+        
+        // Age stability (longer on screen = more settled if chain block)
+        if (block.isGold && block.screenAge > 200) {
+            strength += Math.min((block.screenAge - 200) / 300, 1) * 0.15;
+        }
+        
+        // Connection depth
+        var connectionDepth = block._connectionCount || 0;
+        strength += Math.min(connectionDepth / 8, 1) * 0.1;
+        
+        return Math.min(strength, 1);
+    }
+
+    function countParentReferences(block) {
+        var count = 0;
+        for (var i = 0; i < blocks.length; i++) {
+            if (blocks[i].parentHashes && blocks[i].parentHashes.indexOf(block.hash) >= 0) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    function processRealBlocks(realBlocks) {
+        for (var i = 0; i < realBlocks.length; i++) {
+            var rb = realBlocks[i];
+            var hash = rb.hash || (rb.verboseData && rb.verboseData.hash) || '';
+            if (!hash) continue;
+            if (knownHashes[hash]) continue;
+            knownHashes[hash] = true;
+            
+            var isChain = rb.isChainBlock || (rb.verboseData && rb.verboseData.isChainBlock) || false;
+var blockDepth = isChain ? 0.8 + Math.random() * 0.2 : Math.random();
+            var txCount = 0;
+            var totalKas = 0;
+
+            if (rb.transactions) {
+                txCount = rb.transactions.length;
+                for (var t = 0; t < rb.transactions.length; t++) {
+                    var tx = rb.transactions[t];
+                    if (tx.outputs) {
+                        for (var o = 0; o < tx.outputs.length; o++) {
+                            totalKas += tx.outputs[o].amount || 0;
+                        }
+                    }
+                }
+            }
+
+            var col = parseInt(hash.substring(0, 6), 16) % warpX.length;
+            col = Math.max(0, Math.min(warpX.length - 1, col));
+            var screenY = H * 0.85 + Math.random() * H * 0.1;
+
+            var parentHashes = rb.parentHashes || [];
+            if (!parentHashes.length && rb.parents) {
+                for (var pi = 0; pi < rb.parents.length; pi++) {
+                    if (rb.parents[pi].parentHashes) {
+                        parentHashes = parentHashes.concat(rb.parents[pi].parentHashes);
+                    }
+                }
+            }
+
+            var block = {
+    hash: hash, col: col, x: Math.max(30, Math.min(W - 30, warpX[col])), y: screenY,
+                size: 2 + Math.random() * 3,
+                depth: blockDepth,
+                isGold: isChain,
+                isRed: false,
+                parentHashes: parentHashes,
+                height: rb.height || (rb.header && rb.header.daaScore) || 0,
+                txCount: txCount,
+                totalKas: totalKas,
+                phase: Math.random() * Math.PI * 2,
+                opacity: 1,
+                speed: 0.35 + Math.random() * 0.35,
+                // ── NEW CONSENSUS PROPERTIES ──
+                consensusStrength: 0,
+                targetConsensusStrength: 0,
+                pulsePhase: Math.random() * Math.PI * 2,
+                pulseIntensity: 0,
+                arrivalTime: time,
+                stabilityAge: 0,
+                convergenceGroup: null,
+                convergenceAlpha: 0,
+                energyLevel: 0,
+                flickerAmount: 0,
+                driftX: 0,
+                driftY: 0,
+                screenAge: 0,
+                _childCount: 0,
+                _connectionCount: 0,
+                _isParent: false
+            };
+            
+            blocks.push(block);
+            spawnBirthBurst(block.x, block.y, block.isGold);
+
+
+            
+            blockMap[hash] = block;
+            
+// Single energy burst for this new block's connections
+if (parentHashes.length > 0) {
+    for (var pi = 0; pi < parentHashes.length; pi++) {
+        var parentBlock = blockMap[parentHashes[pi]];
+        if (parentBlock && (block.txCount > 0 || parentBlock.txCount > 0)) {
+            spawnEnergyParticle(parentBlock, block);
+        }
+    }
+}
+        }
+        // Trim overflow — keep max 70 blocks
+while (blocks.length > 70) {
+    var gone = blocks[0];
+    if (gone && gone.hash) {
+        delete knownHashes[gone.hash];
+        delete blockMap[gone.hash];
+    }
+    blocks.splice(0, 1);
+}
+blocks._connections = null;
+blocks._childCounts = false;
+
+        
+        // Update convergence groups
+        detectConvergenceGroups();
+        
+        updateStats();
+    }
+
+    // ── CONVERGENCE DETECTION ──
+    function detectConvergenceGroups() {
+        var groups = {};
+        
+        for (var i = 0; i < blocks.length; i++) {
+            var b = blocks[i];
+            if (!b.parentHashes || b.parentHashes.length < 2) continue;
+            
+            var parentKey = b.parentHashes.sort().join(',');
+            if (!groups[parentKey]) {
+                groups[parentKey] = [];
+            }
+            groups[parentKey].push(b);
+        }
+        
+        // Only consider groups with 3+ blocks referencing same parents
+        for (var key in groups) {
+            if (groups[key].length >= 3) {
+                for (var g = 0; g < groups[key].length; g++) {
+                    groups[key][g].convergenceGroup = key;
+                    groups[key][g].convergenceAlpha = 1;
+                }
+                
+            }
+        }
+    }
+
+    function updateStats() {
+        
+    }
+
+    // ── CONSENSUS FIELD UPDATE ──
+    function updateConsensusField() {
+        // Reset targets
+        for (var r = 0; r < consensusField.length; r++) {
+            for (var c = 0; c < consensusField[r].length; c++) {
+                consensusField[r][c].targetValue = 0;
+            }
+        }
+        
+        // Project blocks onto field
+        for (var i = 0; i < blocks.length; i++) {
+            var b = blocks[i];
+            if (b.y < 0 || b.y > H) continue;
+            
+            var col = Math.floor(b.x / fieldResolution);
+            var row = Math.floor(b.y / fieldResolution);
+            
+            if (col >= 0 && col < (consensusField[0] || []).length && 
+                row >= 0 && row < consensusField.length) {
+                consensusField[row][col].targetValue = Math.max(
+                    consensusField[row][col].targetValue, 
+                    b.consensusStrength
+                );
+            }
+        }
+        
+        // Smooth field
+        var rows = consensusField.length;
+        var cols = consensusField[0] ? consensusField[0].length : 0;
+        
+        for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+                var cell = consensusField[r][c];
+                cell.value += (cell.targetValue - cell.value) * 0.05;
+                
+                // Propagate to neighbors
+                if (r > 0) consensusField[r-1][c].targetValue = Math.max(consensusField[r-1][c].targetValue, cell.value * 0.6);
+                if (r < rows-1) consensusField[r+1][c].targetValue = Math.max(consensusField[r+1][c].targetValue, cell.value * 0.6);
+                if (c > 0) consensusField[r][c-1].targetValue = Math.max(consensusField[r][c-1].targetValue, cell.value * 0.6);
+                if (c < cols-1) consensusField[r][c+1].targetValue = Math.max(consensusField[r][c+1].targetValue, cell.value * 0.6);
+            }
+        }
+    }
+
+    // ── ENERGY PARTICLES ──
+    function spawnEnergyParticle(fromBlock, toBlock) {
+        if (!fromBlock || !toBlock) return;
+        
+        var count = Math.floor(Math.min(fromBlock.txCount || 0, 20) / 3) + 1;
+        for (var i = 0; i < count; i++) {
+            energyParticles.push({
+                x: fromBlock.x,
+                y: fromBlock.y,
+                targetX: toBlock.x,
+                targetY: toBlock.y,
+                progress: 0,
+                speed: 0.005 + Math.random() * 0.02,
+                size: 0.5 + Math.random() * 1.5,
+                isGold: fromBlock.isGold && toBlock.isGold,
+                alpha: 0.3 + Math.random() * 0.4
+            });
+        }
+        
+        // Limit particles
+        if (energyParticles.length > 200) {
+            energyParticles.splice(0, energyParticles.length - 200);
+        }
+    }
+
+    function updateEnergyParticles() {
+        for (var i = energyParticles.length - 1; i >= 0; i--) {
+            var p = energyParticles[i];
+            p.progress += p.speed;
+            
+            if (p.progress >= 1) {
+                energyParticles.splice(i, 1);
+                continue;
+            }
+            
+            p.x = p.x + (p.targetX - p.x) * p.progress;
+            p.y = p.y + (p.targetY - p.y) * p.progress;
+        }
+    }
+
+    function drawEnergyParticles() {
+        for (var i = 0; i < energyParticles.length; i++) {
+            var p = energyParticles[i];
+            if (p.y < 0 || p.y > H) continue;
+            
+            ctx.save();
+            ctx.globalAlpha = p.alpha * (1 - p.progress * 0.5);
+            
+            var glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 3);
+            if (p.isGold) {
+                glow.addColorStop(0, 'rgba(255, 220, 120, 0.8)');
+                glow.addColorStop(0.5, 'rgba(255, 180, 60, 0.3)');
+            
+            } else {
+    glow.addColorStop(0, 'rgba(70, 200, 220, 0.6)');
+    glow.addColorStop(0.5, 'rgba(40, 150, 170, 0.25)');
+}
+
+            glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
+            ctx.fillStyle = glow;
+            ctx.fill();
+            
+            // Core
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = p.isGold ? 'rgba(255, 230, 160, 0.9)' : 'rgba(150, 220, 235, 0.7)';
+            ctx.fill();
+            
+            ctx.restore();
+        }
+    }
+
+    // ── CONSENSUS PULSE EFFECT ──
+    function drawConsensusPulse(block) {
+        if (block.consensusStrength < 0.4) return;
+        if (block.pulseIntensity < 0.05) return;
+        
+        var pulseRadius = 30 + Math.sin(block.pulsePhase) * 10;
+        var pulseAlpha = block.pulseIntensity * 0.3;
+        
+        // Only draw if on screen
+        if (block.y < -pulseRadius || block.y > H + pulseRadius) return;
+        
+        var pulseGrad = ctx.createRadialGradient(block.x, block.y, pulseRadius * 0.5, block.x, block.y, pulseRadius);
+        if (block.isGold && block.consensusStrength > 0.7) {
+            // Strong consensus: golden synchronized pulse
+            pulseGrad.addColorStop(0, 'rgba(255, 200, 80, ' + (pulseAlpha * 0.8) + ')');
+            pulseGrad.addColorStop(0.5, 'rgba(255, 160, 40, ' + (pulseAlpha * 0.4) + ')');
+            pulseGrad.addColorStop(1, 'rgba(255, 100, 20, 0)');
+        } else if (block.isGold) {
+            // Moderate consensus: warm pulse
+            pulseGrad.addColorStop(0, 'rgba(220, 180, 100, ' + (pulseAlpha * 0.6) + ')');
+            pulseGrad.addColorStop(0.5, 'rgba(180, 140, 60, ' + (pulseAlpha * 0.3) + ')');
+            pulseGrad.addColorStop(1, 'rgba(140, 80, 30, 0)');
+        } else {
+            // DAG block: violet/cyan pulse
+            pulseGrad.addColorStop(0, 'rgba(140, 120, 220, ' + (pulseAlpha * 0.5) + ')');
+            pulseGrad.addColorStop(0.5, 'rgba(100, 180, 200, ' + (pulseAlpha * 0.25) + ')');
+            pulseGrad.addColorStop(1, 'rgba(60, 120, 180, 0)');
+        }
+        
+        ctx.beginPath();
+        ctx.arc(block.x, block.y, pulseRadius, 0, Math.PI * 2);
+        ctx.fillStyle = pulseGrad;
+        ctx.fill();
+    }
+
+// ── ORPHAN DRIFT & FLICKER ──
+function updateOrphanBehavior() {
+    // Orphan detection disabled — cannot reliably determine
+    // from partial DAG view. Real Kaspa orphan rate is <1%.
+    for (var i = 0; i < blocks.length; i++) {
+        blocks[i].flickerAmount = Math.max(0, blocks[i].flickerAmount - 0.01);
+    }
+}
+
+    // ── PARALLEL BLOCK EMERGENCE ──
+    function detectParallelProduction() {
+        // Group blocks by approximate screen arrival time
+        var currentTime = time;
+        var parallelGroups = {};
+        
+        for (var i = 0; i < blocks.length; i++) {
+            if (blocks[i].screenAge < 50 && blocks[i].y > H * 0.6) {
+                var colRegion = Math.floor(blocks[i].x / 80);
+                if (!parallelGroups[colRegion]) {
+                    parallelGroups[colRegion] = [];
+                }
+                parallelGroups[colRegion].push(blocks[i]);
+            }
+        }
+        
+        // Emphasize parallel groups
+        for (var region in parallelGroups) {
+            var group = parallelGroups[region];
+            if (group.length >= 2) {
+                for (var g = 0; g < group.length; g++) {
+                    group[g].convergenceAlpha = Math.max(group[g].convergenceAlpha, 0.5);
+                }
+            }
+        }
+    }
+
+    // ── STABILITY & FINALITY ──
+    function updateStability() {
+        for (var i = 0; i < blocks.length; i++) {
+            var b = blocks[i];
+            
+            // Older settled blocks become calmer
+            if (b.isGold && b.screenAge > 300) {
+                b.pulseIntensity *= 0.95; // Fade pulses
+                b.speed = Math.max(0.3, b.speed * 0.9998);  // Slow down gently, never crawl
+                b.stabilityAge = Math.min(1, b.stabilityAge + 0.005);
+            }
+            
+            // New blocks are more dynamic
+            if (b.screenAge < 100 && b.isGold && b.consensusStrength > 0.6) {
+                b.pulseIntensity = Math.min(1, b.pulseIntensity + 0.1);
+            }
+        }
+    }
+
+    // ── CONVERGENCE VISUALIZATION ──
+    function drawConvergenceMesh() {
+        for (var i = 0; i < blocks.length; i++) {
+            var b = blocks[i];
+            if (!b.convergenceGroup || b.convergenceAlpha < 0.1) continue;
+            if (b.y < 0 || b.y > H) continue;
+            
+            // Draw convergence glow around blocks in same group
+            var meshGrad = ctx.createRadialGradient(b.x, b.y, b.size * 2, b.x, b.y, 40);
+            meshGrad.addColorStop(0, 'rgba(100, 200, 255, ' + (b.convergenceAlpha * 0.15) + ')');
+            meshGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, 40, 0, Math.PI * 2);
+            ctx.fillStyle = meshGrad;
+            ctx.fill();
+        }
+        
+        // Draw convergence connections between group members
+        var drawnPairs = {};
+        for (var i = 0; i < blocks.length; i++) {
+            var b1 = blocks[i];
+            if (!b1.convergenceGroup || b1.convergenceAlpha < 0.1) continue;
+            
+            for (var j = i + 1; j < blocks.length; j++) {
+                var b2 = blocks[j];
+                if (b2.convergenceGroup !== b1.convergenceGroup) continue;
+                if (b2.convergenceAlpha < 0.1) continue;
+                
+                var pairKey = i + '_' + j;
+                if (drawnPairs[pairKey]) continue;
+                drawnPairs[pairKey] = true;
+                
+                var alpha = Math.min(b1.convergenceAlpha, b2.convergenceAlpha) * 0.2;
+                var wave = Math.sin(time * 0.05 + (b1.x + b2.x) * 0.01) * 0.5 + 0.5;
+                
+                ctx.beginPath();
+                ctx.moveTo(b1.x, b1.y);
+                ctx.lineTo(b2.x, b2.y);
+                ctx.strokeStyle = 'rgba(150, 220, 255, ' + (alpha * wave) + ')';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 8]);
+                ctx.lineDashOffset = time * 0.2;
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+    }
+
+    // ── DRAWING FUNCTIONS ──
+    function drawWarp() {
+    // Calculate consensus gravity distortions
+    for (var j = 0; j < warpX.length; j++) {
+        var baseX = warpX[j];
+        
+        // Draw warp line in segments, bending toward consensus
+        var segments = 12;
+        var segHeight = H / segments;
+        
+        ctx.beginPath();
+        ctx.moveTo(baseX, 0);
+        
+        for (var s = 1; s <= segments; s++) {
+            var sy = s * segHeight;
+            var bendX = 0;
+            var totalWeight = 0;
+            
+            // Accumulate gravitational pull from nearby consensus blocks
+            for (var i = 0; i < blocks.length; i++) {
+                var b = blocks[i];
+                if (b.consensusStrength < 0.3) continue;
+                if (b.y < 0 || b.y > H) continue;
+                
+                var dy = sy - b.y;
+                var dx = baseX - b.x;
+                var dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 200 || dist < 1) continue;
+                
+                // Inverse-square-like attraction: closer + stronger = more pull
+                var pull = b.consensusStrength / (dist * 0.3 + 20);
+                bendX += (b.x - baseX) * pull;
+                totalWeight += pull;
+            }
+            
+            if (totalWeight > 0) {
+                bendX = bendX / totalWeight * 0.3; // Scale down for subtlety
+            }
+            
+            // Add gentle wave
+            bendX += Math.sin(sy * 0.008 + time * 0.0005 + j * 0.7) * 3;
+            
+            var finalX = Math.max(20, Math.min(W - 20, baseX + bendX)); ctx.lineTo(finalX, sy);
+        }
+        
+        ctx.strokeStyle = 'rgba(40,90,130,0.12)';
+        ctx.lineWidth = 0.4;
+        ctx.setLineDash([8, 24]);
+        ctx.lineDashOffset = -time * 0.1;
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+}
+    
+
+    function drawConsensusFieldOverlay() {
+        for (var r = 0; r < consensusField.length; r++) {
+            for (var c = 0; c < consensusField[r].length; c++) {
+                var cell = consensusField[r][c];
+                if (cell.value < 0.1) continue;
+                
+                var x = c * fieldResolution;
+                var y = r * fieldResolution;
+                var alpha = cell.value * 0.08;
+                
+                ctx.fillStyle = 'rgba(100, 180, 255, ' + alpha + ')';
+                ctx.fillRect(x, y, fieldResolution, fieldResolution);
+            }
+        }
+    }
+
+    function drawConnection(parent, child, isGold) {
+        var x1 = parent.x, y1 = parent.y;
+        var x2 = child.x, y2 = child.y;
+        var dx = x2 - x1, dy = y2 - y1;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 2 || y1 < -40 || y1 > H + 40 || y2 < -40 || y2 > H + 40 || dist > 300) return;
+
+        var avgDepth = (parent.depth + child.depth) / 2;
+        var depthConn = 0.6 + avgDepth * 0.4;
+        
+        // Use consensus strength for connection brightness
+        var consensusAvg = (parent.consensusStrength + child.consensusStrength) / 2;
+        var connAlpha = 0.3 + consensusAvg * 0.7;
+
+        var seedNum = 0;
+        var seed = (parent.hash || '') + '_' + (child.hash || '');
+        for (var si = 0; si < seed.length; si++) seedNum += seed.charCodeAt(si);
+        var off = (seedNum % 100) / 100;
+        var perpX = -dy / dist, perpY = dx / dist;
+        var seg = 6;
+        var pts = [{x: x1, y: y1}];
+
+        for (var s = 1; s <= seg; s++) {
+            var t = s / seg;
+            var waveIntensity = 8 + isGold * 5 + consensusAvg * 4;
+            var connectionPhase = (child.arrivalTime || time) * 0.03;
+var wx = x1 + dx*t + Math.sin(t*Math.PI*3 + off*10 + connectionPhase) * (8 + isGold*5) * perpX;
+var wy = y1 + dy*t + Math.sin(t*Math.PI*3 + off*10 + connectionPhase) * (8 + isGold*5) * perpY;
+            pts.push({x: wx, y: wy});
+        }
+        pts[pts.length - 1].x = x2;
+        pts[pts.length - 1].y = y2;
+
+        // Shadow
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x + 1, pts[0].y + 1);
+        for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x + 1, pts[i].y + 1);
+        ctx.strokeStyle = 'rgba(0,0,0,' + (0.06 + depthConn * 0.04) + ')';
+        ctx.lineWidth = isGold ? 4 : 2.5;
+        ctx.stroke();
+
+        // Main connection - brightness reflects consensus
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j].x, pts[j].y);
+        
+        if (isGold && consensusAvg > 0.7) {
+            ctx.strokeStyle = 'rgba(255, 200, 130, ' + connAlpha + ')';
+        } else if (isGold) {
+            ctx.strokeStyle = 'rgba(255, 180, 120, ' + connAlpha + ')';
+        } else {
+            ctx.strokeStyle = 'rgba(180, 200, 230, ' + (connAlpha * 0.7) + ')';
+        }
+        ctx.lineWidth = (isGold ? 2.5 : 1.5) * depthConn + consensusAvg * 0.5;
+        ctx.stroke();
+
+        // Consensus glow on strong connections
+        if (consensusAvg > 0.6) {
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (var k = 1; k < pts.length; k++) ctx.lineTo(pts[k].x, pts[k].y);
+            ctx.strokeStyle = 'rgba(200, 220, 255, ' + (consensusAvg * 0.2) + ')';
+            ctx.lineWidth = 6 + consensusAvg * 4;
+            ctx.stroke();
+        }
+
+        // Synchronized pulse through connection
+        if (parent.pulseIntensity > 0.3 && child.pulseIntensity > 0.3) {
+            var pulseProgress = (time % 100) / 100;
+            for (var pi = 0; pi < 3; pi++) {
+                var pt = (pulseProgress + pi / 3) % 1;
+                var pwx = x1 + dx * pt;
+                var pwy = y1 + dy * pt;
+                
+                var pulseGrad = ctx.createRadialGradient(pwx, pwy, 0, pwx, pwy, 6);
+                pulseGrad.addColorStop(0, 'rgba(255, 220, 150, ' + (0.4 * (1 - pt * 0.5)) + ')');
+                pulseGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                
+                ctx.beginPath();
+                ctx.arc(pwx, pwy, 6, 0, Math.PI * 2);
+                ctx.fillStyle = pulseGrad;
+                ctx.fill();
+            }
+        }
+    }
+
+    
+
+    function drawBlock(b) {
+        if (b.y < -40 || b.y > H + 40) return;
+        ctx.save();
+        
+        // Flicker for orphan blocks
+        var flickerAlpha = 1;
+        if (b.flickerAmount > 0.01) {
+            flickerAlpha = 0.5 + Math.sin(time * 0.3 + b.phase) * 0.5 * b.flickerAmount;
+            flickerAlpha = Math.max(0.3, flickerAlpha);
+        }
+        
+        ctx.globalAlpha = b.opacity * (0.5 + b.depth * 0.5) * flickerAlpha;
+        ctx.translate(b.x + b.driftX, b.y + b.driftY);
+
+        var depthScale = 0.6 + b.depth * 0.4;
+        var stabilityFactor = 1 - b.stabilityAge * 0.3;
+        var breathe = 1 + Math.sin(time * 0.03 + b.phase) * 0.06 * stabilityFactor;
+        var kSize = (12 + b.size * 1.2 + (b._isParent ? 3 : 0)) * breathe * depthScale;
+        
+        // Consensus-adjusted size
+        kSize += b.consensusStrength * 2;
+        
+        var txV = Math.min(b.txCount / 30, 1);
+        var kasB = Math.min((b.totalKas || 0) / 50000000, 1);
+
+        // Glow - consensus strength determines warmth and brightness
+        var depthGlow = b.depth * 0.8 + 0.2;
+        var glowIntensity = 0.2 + b.consensusStrength * 0.5;
+        var glow = ctx.createRadialGradient(0, 0, kSize * 0.4, 0, 0, kSize * 2.5 * depthScale);
+        
+        if (b.isGold && b.consensusStrength > 0.7) {
+            // Strong consensus: warm, bright golden
+            glow.addColorStop(0, 'rgba(255, 220, 120, ' + (glowIntensity + kasB * 0.15) + ')');
+            glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        } else if (b.isGold) {
+    glow.addColorStop(0, 'rgba(255, 200, 100, ' + (glowIntensity + kasB * 0.1) + ')');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+} else if (b.consensusStrength < 0.2) {
+
+    // Low consensus: cold, dim, receding into depth
+    glow.addColorStop(0, 'rgba(50, 70, 140, ' + (glowIntensity * 0.2) + ')');
+
+            glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        } else {
+    glow.addColorStop(0, 'rgba(120, 110, 190, ' + (glowIntensity * 0.8 + kasB * 0.1) + ')');
+    glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+}
+
+        ctx.beginPath();
+        ctx.arc(0, 0, kSize * 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = glow;
+        ctx.fill();
+
+        // Membrane veil - less active for stable blocks
+        var mvPhase = time * 0.02 + b.phase;
+        var mvActivity = stabilityFactor;
+        var mvSize = kSize * 2 + Math.sin(mvPhase) * kSize * 0.3 * mvActivity;
+        var mvAlpha = (0.03 + Math.sin(mvPhase * 1.3) * 0.015) * mvActivity;
+        var veilGrad = ctx.createRadialGradient(0, 0, kSize * 0.7, 0, 0, mvSize);
+        
+        if (b.isGold && b.consensusStrength > 0.7) {
+            veilGrad.addColorStop(0, 'rgba(255, 230, 160, ' + (mvAlpha * 2) + ')');
+            veilGrad.addColorStop(0.5, 'rgba(220, 180, 100, ' + (mvAlpha * 1.5) + ')');
+        } else if (b.isGold) {
+            veilGrad.addColorStop(0, 'rgba(255, 200, 140, ' + (mvAlpha * 1.5) + ')');
+            veilGrad.addColorStop(0.5, 'rgba(200, 140, 60, ' + mvAlpha + ')');
+        } else {
+    veilGrad.addColorStop(0, 'rgba(100, 85, 160, ' + (mvAlpha * 1.1) + ')');
+    veilGrad.addColorStop(0.5, 'rgba(45, 25, 110, ' + (mvAlpha * 0.9) + ')');
+}
+
+        veilGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.beginPath();
+        for (var vi = 0; vi <= 8; vi++) {
+            var va = (vi / 8) * Math.PI * 2;
+            var vr = mvSize + Math.sin(va * 4 + mvPhase) * kSize * 0.2;
+            if (vi === 0) ctx.moveTo(Math.cos(va) * vr, Math.sin(va) * vr);
+            else ctx.lineTo(Math.cos(va) * vr, Math.sin(va) * vr);
+        }
+        ctx.closePath();
+        ctx.fillStyle = veilGrad;
+        ctx.fill();
+
+        // Chromatic rings - pulse with consensus
+        for (var ring = 1; ring >= 0; ring--) {
+            var rPhase = time * 0.04 + b.phase + ring * 1.2;
+            var rPulse = b.pulseIntensity * Math.sin(rPhase);
+            var rDist = kSize * (1.1 + ring * 0.35 + Math.sin(rPhase) * 0.2 + rPulse * 0.3);
+            var rAlpha = (0.05 - ring * 0.02) * (0.5 + Math.sin(rPhase) * 0.5 + b.consensusStrength * 0.5);
+            
+            ctx.beginPath();
+            ctx.arc(0, 0, rDist, 0, Math.PI * 2);
+            
+            if (b.consensusStrength > 0.7) {
+                ctx.strokeStyle = 'rgba(255, 220, 140, ' + rAlpha + ')';
+                ctx.lineWidth = b.isGold ? 1.2 - ring * 0.2 : 0.8 - ring * 0.1;
+            } else if (b.isGold) {
+                ctx.strokeStyle = 'rgba(255, 200, 120, ' + rAlpha + ')';
+                ctx.lineWidth = b.isGold ? 1 - ring * 0.2 : 0.6 - ring * 0.1;
+            } else {
+                ctx.strokeStyle = 'rgba(140, 120, 220, ' + rAlpha + ')';
+                ctx.lineWidth = b.isGold ? 1 - ring * 0.2 : 0.6 - ring * 0.1;
+            }
+            ctx.stroke();
+        }
+
+        // Parent corona - brighter for strong consensus
+        if (b._isParent) {
+            var pPulse = Math.sin(time * 0.05 + b.phase) * 0.3 + 0.7;
+            var coronaAlpha = 0.2 + b.consensusStrength * 0.5;
+            var corona = ctx.createRadialGradient(0, 0, kSize * 0.8, 0, 0, kSize * 1.8);
+            
+            if (b.isGold && b.consensusStrength > 0.7) {
+                corona.addColorStop(0, 'rgba(255, 240, 140, ' + (0.5 * pPulse) + ')');
+                corona.addColorStop(0.5, 'rgba(255, 200, 80, ' + (0.3 * pPulse) + ')');
+            } else if (b.isGold) {
+                corona.addColorStop(0, 'rgba(255, 220, 100, ' + (0.4 * pPulse) + ')');
+                corona.addColorStop(0.5, 'rgba(255, 180, 50, ' + (0.2 * pPulse) + ')');
+            } else {
+                corona.addColorStop(0, 'rgba(140, 120, 220, ' + (0.3 * pPulse) + ')');
+                corona.addColorStop(0.5, 'rgba(60, 40, 160, ' + (0.15 * pPulse) + ')');
+            }
+            corona.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.beginPath();
+            ctx.arc(0, 0, kSize * 1.8, 0, Math.PI * 2);
+            ctx.fillStyle = corona;
+            ctx.fill();
+        }
+
+        // Child tendrils
+        if (b.parentHashes && b.parentHashes.length > 0) {
+            for (var tn = 0; tn < b.parentHashes.length && tn < 3; tn++) {
+                var pBlock = blockMap[b.parentHashes[tn]];
+                if (!pBlock) continue;
+                var pdx = pBlock.x - b.x, pdy = pBlock.y - b.y;
+                var pDist = Math.sqrt(pdx * pdx + pdy * pdy);
+                if (pDist < 2) continue;
+                var pnx = pdx / pDist, pny = pdy / pDist;
+                var sx = pnx * kSize * 0.6, sy = pny * kSize * 0.4;
+                var ex = pnx * kSize * 1.5, ey = pny * kSize * 1.2;
+                var tw = Math.sin(time * 0.06 + tn * 2 + b.phase) * 2 * stabilityFactor;
+                
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.quadraticCurveTo((sx + ex) / 2 + tw * (-pny), (sy + ey) / 2 + tw * pnx, ex, ey);
+                
+                if (b.isGold && b.consensusStrength > 0.7) {
+                    ctx.strokeStyle = 'rgba(255, 240, 160, 0.55)';
+                } else if (b.isGold) {
+                    ctx.strokeStyle = 'rgba(255, 220, 120, 0.45)';
+                } else {
+                    ctx.strokeStyle = 'rgba(160, 140, 230, 0.35)';
+                }
+                ctx.lineWidth = 1.3;
+                ctx.stroke();
+                
+                // Glowing tip
+                var tg = ctx.createRadialGradient(ex, ey, 0, ex, ey, 1.5);
+                if (b.isGold) {
+                    tg.addColorStop(0, b.consensusStrength > 0.7 ? 'rgba(255, 250, 200, 0.7)' : 'rgba(255, 240, 180, 0.6)');
+                } else {
+                    tg.addColorStop(0, 'rgba(120, 230, 240, 0.5)');
+                }
+                tg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.beginPath();
+                ctx.arc(ex, ey, 1.5, 0, Math.PI * 2);
+                ctx.fillStyle = tg;
+                ctx.fill();
+            }
+        }
+
+        // Shadow
+        ctx.beginPath();
+        ctx.ellipse(1, 2, kSize + 1, kSize * 0.6, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 10, 20, 0.3)';
+        ctx.fill();
+
+        // Body - color reflects consensus
+        ctx.beginPath();
+        for (var i = 0; i <= 12; i++) {
+            var a = (i / 12) * Math.PI * 2;
+            var rx = kSize + Math.sin(a * 2 + b.phase) * 1.2 + Math.sin(a * 5) * 0.6;
+            var ry = kSize * 0.65 + Math.cos(a * 3 + b.phase) * 1;
+            if (i === 0) ctx.moveTo(Math.cos(a) * rx, Math.sin(a) * ry);
+            else ctx.lineTo(Math.cos(a) * rx, Math.sin(a) * ry);
+        }
+        ctx.closePath();
+        var bg = ctx.createRadialGradient(-0.3, -0.5, 0, 0, 0, kSize);
+        
+        if (b.isGold && b.consensusStrength > 0.7) {
+            bg.addColorStop(0, 'rgba(255, 240, 160, 0.9)');
+            bg.addColorStop(0.5, 'rgba(240, 180, 80, 0.65)');
+            bg.addColorStop(1, 'rgba(120, 60, 20, 0.2)');
+        } else if (b.isGold) {
+            bg.addColorStop(0, 'rgba(255, 220, 140, 0.85)');
+            bg.addColorStop(0.5, 'rgba(200, 150, 60, 0.6)');
+            bg.addColorStop(1, 'rgba(80, 30, 10, 0.2)');
+        } else if (b.consensusStrength < 0.2) {
+    bg.addColorStop(0, 'rgba(60, 45, 120, 0.4)');
+    bg.addColorStop(0.5, 'rgba(35, 20, 80, 0.2)');
+    bg.addColorStop(1, 'rgba(8, 4, 25, 0.08)');
+
+          
+        } 
+            else {
+    bg.addColorStop(0, 'rgba(100, 85, 160, 0.65)');
+    bg.addColorStop(0.5, 'rgba(50, 35, 110, 0.4)');
+    bg.addColorStop(1, 'rgba(12, 8, 40, 0.12)');
+}
+
+        ctx.fillStyle = bg;
+        ctx.fill();
+
+        // Iris
+        var pupilD = 0.5 + txV * 0.3 + Math.sin(time * 0.05 + b.phase) * 0.1;
+        var irisS = kSize * 0.5, pupilS = irisS * (0.25 + pupilD * 0.4);
+        var ig = ctx.createRadialGradient(0, 0, pupilS, 0, 0, irisS);
+        
+        if (b.isGold && b.consensusStrength > 0.7) {
+            ig.addColorStop(0, 'rgba(255, 230, 150, 0.95)');
+            ig.addColorStop(0.5, 'rgba(255, 180, 70, 0.65)');
+            ig.addColorStop(1, 'rgba(200, 100, 30, 0.12)');
+        } else if (b.isGold) {
+            ig.addColorStop(0, 'rgba(255, 200, 100, 0.9)');
+            ig.addColorStop(0.5, 'rgba(255, 150, 40, 0.6)');
+            ig.addColorStop(1, 'rgba(150, 60, 10, 0.1)');
+        } else {
+    ig.addColorStop(0, 'rgba(140, 120, 190, 0.75)');
+    ig.addColorStop(0.5, 'rgba(80, 55, 150, 0.45)');
+    ig.addColorStop(1, 'rgba(15, 8, 45, 0.06)');
+}
+
+        ctx.beginPath();
+        ctx.arc(0, 0, irisS, 0, Math.PI * 2);
+        ctx.fillStyle = ig;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(0, 0, pupilS, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(-pupilS * 0.2, -pupilS * 0.25, pupilS * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.fill();
+
+        // Thorns
+        var thornC = (b._isParent ? 8 : 2) + Math.floor(txV * 2);
+        for (var th = 0; th < thornC; th++) {
+            var ta = (th / thornC) * Math.PI * 2 + b.phase * 0.2;
+            var tipX = Math.cos(ta) * (kSize * 1.5), tipY = Math.sin(ta) * (kSize * 1.5) * 0.65;
+            ctx.beginPath();
+            ctx.moveTo(Math.cos(ta - 0.1) * kSize * 0.5, Math.sin(ta - 0.1) * kSize * 0.35);
+            ctx.lineTo(tipX, tipY);
+            ctx.lineTo(Math.cos(ta + 0.1) * kSize * 0.5, Math.sin(ta + 0.1) * kSize * 0.35);
+            ctx.closePath();
+            
+            if (b.isGold && b.consensusStrength > 0.7) {
+                ctx.fillStyle = 'rgba(255, 230, 160, 0.7)';
+            } else if (b.isGold) {
+                ctx.fillStyle = 'rgba(255, 200, 100, 0.65)';
+            } else {
+                ctx.fillStyle = 'rgba(180, 160, 220, 0.55)';
+            }
+            ctx.fill();
+            ctx.strokeStyle = b.isGold ? 'rgba(255, 220, 150, 0.5)' : 'rgba(200, 180, 240, 0.4)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+        }
+
+        // Highlight
+        var spec = ctx.createRadialGradient(-kSize * 0.1, -kSize * 0.15, 0, 0, 0, kSize * 0.4);
+        spec.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+        spec.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.beginPath();
+        ctx.arc(-kSize * 0.1, -kSize * 0.15, kSize * 0.35, 0, Math.PI * 2);
+        ctx.fillStyle = spec;
+        ctx.fill();
+
+        ctx.restore();
+        
+        // Draw consensus pulse (outside block transform)
+        drawConsensusPulse(b);
+    }
+
+    function drawTxFringe(block) {
+        if (!block.txCount || block.y < -40 || block.y > H + 40) return;
+        var kSize = (12 + block.size * 1.2) * (1 + Math.sin(time * 0.03 + block.phase) * 0.06);
+        var fc = Math.min(block.txCount, 20);
+        
+        var isChild = block.parentHashes && block.parentHashes.length > 0;
+        var isParent = block._isParent || false;
+        var baseFL = isChild ? 15 : 30;
+        if (isParent) baseFL += 20;
+        var segments = 2;
+
+        ctx.save();
+        ctx.translate(block.x + block.driftX, block.y + block.driftY);
+        ctx.globalAlpha = block.opacity * 0.5;
+
+        for (var f = 0; f < fc; f++) {
+            var spreadAngle = -Math.PI * 0.4 + (f / (fc - 1 || 1)) * Math.PI * 0.8;
+            var prevX = Math.cos(spreadAngle) * kSize * 0.5;
+            var prevY = Math.sin(spreadAngle) * kSize * 0.3 + kSize * 0.45;
+            var strandAlpha = 0.4 + (f / fc) * 0.3;
+
+            var sc;
+            if (block.isGold && block.consensusStrength > 0.7) {
+                sc = 'rgba(255, 230, 180, ' + (strandAlpha + 0.3) + ')';
+            } else if (block.isGold) {
+                sc = 'rgba(240, 200, 255, ' + (strandAlpha + 0.2) + ')';
+            } else if (block.consensusStrength < 0.2) {
+                sc = 'rgba(80, 150, 180, ' + (strandAlpha * 0.5) + ')';
+            } else {
+    sc = 'rgba(30, 190, 180, ' + strandAlpha + ')';
+}
+
+
+            for (var seg = 1; seg <= segments; seg++) {
+                var t = seg / segments;
+                var strandFL = baseFL + f * 1.5;
+                var segLength = strandFL / segments;
+                var wave1 = Math.sin(time * 0.05 + f * 0.8 + seg * 0.9) * (3 + seg * 1.2);
+                var wave2 = Math.cos(time * 0.06 + f * 0.5 + seg * 1.2) * (1.5 + seg * 0.8);
+                var baseX = Math.cos(spreadAngle) * segLength * 0.3 * seg;
+                var baseY = segLength * (0.4 + t * 0.5) * seg;
+                var nextX = prevX + baseX + wave1 + wave2 * 0.5;
+                var nextY = prevY + baseY + wave2;
+                var cpX = prevX + (nextX - prevX) * 0.4 + wave1 * 0.3;
+                var cpY = prevY + (nextY - prevY) * 0.3 + wave2 * 0.3;
+
+                ctx.beginPath();
+                ctx.moveTo(prevX + 0.5, prevY + 0.5);
+                ctx.quadraticCurveTo(cpX + 0.5, cpY + 0.5, nextX + 0.5, nextY + 0.5);
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(prevX, prevY);
+                ctx.quadraticCurveTo(cpX, cpY, nextX, nextY);
+                ctx.strokeStyle = sc;
+                var strandWidth = (0.3 + (f / fc) * 0.4) - seg * 0.04;
+                if (block.isGold && block.consensusStrength > 0.7) strandWidth += 0.6;
+                else if (block.isGold) strandWidth += 0.4;
+                ctx.lineWidth = strandWidth;
+                ctx.stroke();
+
+                if (seg === segments) {
+                    var tg = ctx.createRadialGradient(nextX, nextY, 0, nextX, nextY, 2);
+                    if (block.consensusStrength > 0.7) {
+                        tg.addColorStop(0, 'rgba(255, 240, 180, 0.8)');
+                    } else {
+                        tg.addColorStop(0, 'rgba(150, 240, 220, 0.7)');
+                    }
+                    tg.addColorStop(0.4, sc);
+                    tg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                    ctx.beginPath();
+                    ctx.arc(nextX, nextY, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = tg;
+                    ctx.fill();
+                }
+
+                prevX = nextX;
+                prevY = nextY;
+            }
+        }
+        ctx.restore();
+    }
+
+    // ── BIRTH PARTICLES ──
+    var birthParticles = [];
+
+    function spawnBirthBurst(x, y, isGold) {
+        for (var bp = 0; bp < 12; bp++) {
+            var angle = (bp / 12) * Math.PI * 2;
+            var speed = 1.5 + Math.random() * 3;
+            birthParticles.push({
+                x: x, y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                life: 1,
+                isGold: isGold
+            });
+        }
+    }
+
+    function drawBirthParticles() {
+        for (var bp = birthParticles.length - 1; bp >= 0; bp--) {
+            var p = birthParticles[bp];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.025;
+            if (p.life <= 0) {
+                birthParticles.splice(bp, 1);
+                continue;
+            }
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 1.5 * p.life, 0, Math.PI * 2);
+            ctx.fillStyle = p.isGold ? 'rgba(255, 210, 140, ' + (p.life * 0.7) + ')' : 'rgba(110, 170, 200, ' + (p.life * 0.5) + ')';
+            ctx.fill();
+        }
+    }
+
+    // ── CAMERA ──
+    function updateCamera() {
+        var driftX = Math.sin(time * 0.0008) * 25 + Math.sin(time * 0.0013 + 1.7) * 18;
+        var driftY = Math.cos(time * 0.0006) * 20 + Math.sin(time * 0.0011 + 2.3) * 15;
+        var activityBoost = Math.min(blocks.length / 80, 1);
+        driftX *= (1 + activityBoost * 0.4);
+        driftY *= (1 + activityBoost * 0.3);
+        var zoomBreath = 1 + Math.sin(time * 0.0004) * 0.012 + Math.sin(time * 0.0007) * 0.008;
+        
+        camera.targetX = driftX;
+        camera.targetY = driftY;
+        camera.targetZoom = zoomBreath;
+        camera.x += (camera.targetX - camera.x) * 0.008;
+        camera.y += (camera.targetY - camera.y) * 0.008;
+        camera.zoom += (camera.targetZoom - camera.zoom) * 0.008;
+    }
+
+    // ── MAIN UPDATE ──
+    function update() {
+        time++;
+        updateCamera();
+        fetchTimer++;
+        
+        if (fetchTimer % 40 === 0) { 
+            fetchBlockDAG(); 
+            fetchBlocks(); 
+        }
+        
+        // Update block properties
+        for (var i = blocks.length - 1; i >= 0; i--) {
+            blocks[i].y -= blocks[i].speed;
+            blocks[i].screenAge++;
+            
+            if (blocks[i].y < -80) {
+                var gone = blocks[i];
+                if (gone && gone.hash) {
+                    delete knownHashes[gone.hash];
+                    delete blockMap[gone.hash];
+                }
+                blocks.splice(i, 1);
+                blocks._connections = null;
+                blocks._childCounts = false;
+                continue;
+            }
+            
+            if (blocks[i].y < 10) blocks[i].opacity = Math.max(0.2, blocks[i].y / 10);
+            
+            // Calculate consensus strength
+            blocks[i].targetConsensusStrength = calculateConsensusStrength(blocks[i]);
+            blocks[i].consensusStrength += (blocks[i].targetConsensusStrength - blocks[i].consensusStrength) * 0.05;
+            
+            // Update pulse
+            blocks[i].pulsePhase += 0.02 + blocks[i].consensusStrength * 0.05;
+            blocks[i].pulseIntensity = blocks[i].consensusStrength * (0.5 + Math.sin(time * 0.03) * 0.3);
+            
+            // Decay convergence alpha
+            if (!blocks[i].convergenceGroup) {
+                blocks[i].convergenceAlpha *= 0.95;
+            }
+        }
+        
+        // Update orphan behavior
+        updateOrphanBehavior();
+        
+        // Update stability
+        updateStability();
+        
+        // Update consensus field
+        updateConsensusField();
+        
+        // Detect parallel production
+        if (time % 30 === 0) detectParallelProduction();
+        
+        // Update energy particles
+        updateEnergyParticles();
+        
+
+        
+        // Update connection counts
+        blocks._childCounts = false;
+    }
+
+    // ── MAIN DRAW ──
+    function draw() {
+        update();
+        if (time % 60 === 0) updateStats();
+
+        // Background
+        var w1 = Math.sin(time * 0.003) * 0.4 + 0.5, 
+            w2 = Math.cos(time * 0.005 + 1.2) * 0.3 + 0.5, 
+            w3 = Math.sin(time * 0.004 + 2.5) * 0.3 + 0.5;
+        var bgGrad = ctx.createRadialGradient(W * 0.3, H * 0.4, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.7);
+        bgGrad.addColorStop(0, 'rgb(' + Math.floor(3 + w1 * 5 + w2 * 2) + ',' + Math.floor(10 + w2 * 12 + w3 * 8) + ',' + Math.floor(20 + w3 * 14 + w1 * 8) + ')');
+        bgGrad.addColorStop(1, '#040810');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Apply cinematic camera
+        ctx.save();
+        ctx.translate(W / 2, H / 2);
+        ctx.scale(camera.zoom, camera.zoom);
+        ctx.translate(-W / 2 + camera.x, -H / 2 + camera.y);
+
+        // Atmospheric depth fog
+        var fogGrad = ctx.createLinearGradient(0, H * 0.7, 0, H);
+        fogGrad.addColorStop(0, 'rgba(4, 8, 16, 0)');
+fogGrad.addColorStop(1, 'rgba(4, 8, 16, 0.45)');
+        ctx.fillStyle = fogGrad;
+        ctx.fillRect(0, H * 0.7, W, H * 0.3);
+
+        // Draw consensus field overlay
+        drawConsensusFieldOverlay();
+
+        drawWarp();
+
+        // Dust
+        for (var d = 0; d < 8; d++) {
+            ctx.beginPath();
+            ctx.arc((Math.sin(time * 0.02 + d * 1.7) * 0.5 + 0.5) * W, ((time * 0.15 + d * 37) % (H + 80)) - 40, 0.5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(100, 200, 210, ' + (0.15 + Math.sin(d * 2.3) * 0.1) + ')';
+            ctx.fill();
+        }
+
+        // Connections
+        if (!blocks._connections) {
+            blocks._connections = [];
+            blocks._childCounts = false;
+            blocks.sort(function(a, b) { return a.depth - b.depth; });
+            for (var i = 0; i < blocks.length; i++) {
+                var conns = [];
+                for (var p = 0; p < blocks[i].parentHashes.length; p++) {
+                    var par = blockMap[blocks[i].parentHashes[p]];
+                    if (par && par !== blocks[i] && conns.indexOf(par) < 0) conns.push(par);
+                }
+                if (conns.length < 2) {
+                    var cands = [];
+                    for (var j = 0; j < blocks.length; j++) {
+                        if (i === j) continue;
+                        if (blocks[j].y < blocks[i].y && blocks[j].y > 20 && blocks[i].y > 20) {
+                            var ddx = blocks[i].x - blocks[j].x, ddy = blocks[i].y - blocks[j].y, dd = Math.sqrt(ddx * ddx + ddy * ddy);
+                            if (dd < 200) cands.push({b: blocks[j], d: dd});
+                        }
+                    }
+                    cands.sort(function(a, b) { return a.d - b.d; });
+                    for (var c = 0; c < cands.length && conns.length < 2; c++) {
+                        if (conns.indexOf(cands[c].b) < 0) conns.push(cands[c].b);
+                    }
+                }
+                blocks._connections.push(conns);
+            }
+        }
+        if (!blocks._childCounts) {
+            for (var ci = 0; ci < blocks.length; ci++) {
+                var cnt = 0;
+                for (var cj = 0; cj < blocks.length; cj++) {
+                    if (blocks[cj].parentHashes.indexOf(blocks[ci].hash) >= 0) cnt++;
+                }
+                blocks[ci]._childCount = cnt;
+                blocks[ci]._isParent = cnt > 0;
+                blocks[ci]._connectionCount = cnt + (blocks[ci].parentHashes ? blocks[ci].parentHashes.length : 0);
+            }
+            blocks._childCounts = true;
+        }
+
+        // Draw convergence mesh (behind blocks)
+        drawConvergenceMesh();
+
+        // Draw connections
+        for (var i = 0; i < blocks.length; i++) {
+            var bl = blocks[i];
+            if (bl.y < -40 || bl.y > H + 40) continue;
+            var cns = blocks._connections[i] || [];
+            for (var c = 0; c < cns.length; c++) {
+                var prt = cns[c];
+                if (prt && prt.y > 0 && prt.y < H && bl.y > 0 && bl.y < H) {
+                    drawConnection(prt, bl, bl.isGold && prt.isGold);
+                    
+                }
+            }
+        }
+
+        // Draw energy particles
+        drawEnergyParticles();
+
+        // Draw blocks
+        for (var k = 0; k < blocks.length; k++) {
+            drawBlock(blocks[k]);
+            drawTxFringe(blocks[k]);
+        }
+        drawBirthParticles();
+
+        // Restore camera transform
+        ctx.restore();
+
+        // Vignette
+        var vg = ctx.createRadialGradient(W / 2, H / 2, W * 0.55, W / 2, H / 2, W * 0.9);
+        vg.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vg.addColorStop(1, 'rgba(2, 8, 20, 0.55)');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, W, H);
+        
+        requestAnimationFrame(draw);
+    }
+
+    // ── START ──
+    fetchBlockDAG();
+    setTimeout(fetchBlocks, 1000);
+    draw();
+    </script>
+</body>
+</html>
