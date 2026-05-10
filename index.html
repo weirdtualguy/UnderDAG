@@ -265,12 +265,71 @@
     margin-top: 16px;
 }
 
+#block-inspector {
+    display: none;
+    position: fixed;
+    z-index: 35;
+    background: rgba(10,18,30,0.8);
+    border: 0.5px solid rgba(160,200,220,0.12);
+    border-radius: 16px;
+    padding: 18px 22px;
+    max-width: 260px;
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    pointer-events: auto;
+}
+#block-inspector .insp-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 9px;
+}
+#block-inspector .insp-label {
+    color: rgba(150,180,200,0.5);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 400;
+}
+#block-inspector .insp-value {
+    color: rgba(190,210,230,0.75);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+    max-width: 150px;
+    text-align: right;
+    word-break: break-all;
+}
+#block-inspector .insp-gold { color: rgba(255,210,140,0.8); }
+#block-inspector .insp-violet { color: rgba(150,130,210,0.8); }
+#block-inspector .insp-cyan { color: rgba(110,200,220,0.75); }
+#block-inspector .insp-divider {
+    height: 0.5px;
+    background: rgba(160,200,220,0.08);
+    margin: 10px 0;
+}
+#block-inspector .insp-note {
+    font-size: 7px;
+    color: rgba(140,170,190,0.35);
+    margin-top: 8px;
+    letter-spacing: 0.3px;
+    font-style: italic;
+}
+#block-inspector .insp-close {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    color: rgba(160,200,220,0.3);
+    font-size: 11px;
+    cursor: pointer;
+}
     
 </style>
 
 </head>
 <body>
-  <div id="title">Kaspa Consensus</div>
+  <div id="title">Kaspa BlockDAG</div>
 
 <a href="javascript:void(0)" class="info-btn" 
    onclick="document.getElementById('info-overlay').classList.add('active');">
@@ -371,6 +430,12 @@
         </div>
     </div>
 </div>
+
+<div id="block-inspector" onclick="event.stopPropagation();">
+    <span class="insp-close" onclick="document.getElementById('block-inspector').style.display='none';">✕</span>
+    <div id="insp-content"></div>
+</div>
+
     <canvas id="canvas"></canvas>
 
     <script>
@@ -1689,6 +1754,85 @@ fogGrad.addColorStop(1, 'rgba(4, 8, 16, 0.45)');
         
         requestAnimationFrame(draw);
     }
+// ── BLOCK INSPECTOR ──
+canvas.addEventListener('click', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var mx = e.clientX - rect.left;
+    var my = e.clientY - rect.top;
+    
+    var found = null;
+    var bestDist = 35;
+    
+    for (var i = blocks.length - 1; i >= 0; i--) {
+        var b = blocks[i];
+        if (b.y < 0 || b.y > H) continue;
+        var dx = mx - (b.x + (b.driftX || 0));
+        var dy = my - (b.y + (b.driftY || 0));
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < bestDist) {
+            found = b;
+            bestDist = dist;
+        }
+    }
+    
+    var panel = document.getElementById('block-inspector');
+    var content = document.getElementById('insp-content');
+    
+        if (!found) {
+        panel.style.display = 'none';
+        return;
+    }
+    
+    // Show loading state
+    var typeClass = found.isGold ? 'insp-gold' : 'insp-violet';
+    var typeLabel = found.isGold ? 'Chain Block' : 'DAG Block';
+    content.innerHTML = '<div style="font-size:9px;color:rgba(180,200,220,0.5);text-align:center;padding:20px;">Loading block data...</div>';
+    var px = Math.min(mx + 15, window.innerWidth - 280);
+    var py = Math.min(my + 15, window.innerHeight - 320);
+    panel.style.left = px + 'px';
+    panel.style.top = py + 'px';
+    panel.style.display = 'block';
+    
+    // Fetch full block data
+    fetch('https://api.kaspa.org/blocks/' + found.hash)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            var vd = data.verboseData || {};
+            var header = data.header || {};
+            var parentCount = (header.parents && header.parents.length > 0) 
+                ? header.parents[0].parentHashes.length 
+                : ((header.parents && header.parents.length) || '—');
+            var childCount = (vd.childrenHashes && vd.childrenHashes.length > 0) ? vd.childrenHashes.length : '—';
+            var blueScore = vd.blueScore || header.blueScore || '—';
+            var timestamp = header.timestamp ? new Date(parseInt(header.timestamp)).toLocaleString() : '—';
+            var hashFull = (found.hash || '').substring(0, 14) + '...';
+            var txCount = data.transactions ? data.transactions.length : (found.txCount || 0);
+            
+            var kasAmount = (found.totalKas || 0) / 100000000;
+            var kasText = kasAmount >= 0.01 ? kasAmount.toFixed(2) + ' KAS' : (found.totalKas || 0) + ' sompi';
+            
+            content.innerHTML = 
+                '<div class="insp-row"><span class="insp-label">Type</span><span class="insp-value ' + typeClass + '">' + typeLabel + '</span></div>' +
+                '<div class="insp-row"><span class="insp-label">Hash</span><span class="insp-value">' + hashFull + '</span></div>' +
+                '<div class="insp-row"><span class="insp-label">Time</span><span class="insp-value">' + timestamp + '</span></div>' +
+                '<div class="insp-row"><span class="insp-label">Blue Score</span><span class="insp-value">' + blueScore + '</span></div>' +
+                '<div class="insp-row"><span class="insp-label">Transactions</span><span class="insp-value">' + txCount + '</span></div>' +
+                '<div class="insp-row"><span class="insp-label">Amount</span><span class="insp-value insp-cyan">' + kasText + '</span></div>' +
+                '<div class="insp-row"><span class="insp-label">Parents</span><span class="insp-value">' + parentCount + '</span></div>' +
+                '<div class="insp-row"><span class="insp-label">Children</span><span class="insp-value">' + childCount + '</span></div>' +
+                '<div class="insp-note">Block details from Kaspa API</div>';
+
+        })
+        .catch(function() {
+            content.innerHTML = '<div style="font-size:9px;color:rgba(255,150,150,0.5);text-align:center;padding:20px;">Could not load block data</div>';
+        });
+});
+
+
+// Close inspector when tapping canvas background
+canvas.addEventListener('touchstart', function(e) {
+    // Let the click handler manage this via the same logic
+});
 
     // ── START ──
     fetchBlockDAG();
