@@ -1804,6 +1804,7 @@ canvas.addEventListener('click', function(e) {
                 : ((header.parents && header.parents.length) || '—');
             var childCount = (vd.childrenHashes && vd.childrenHashes.length > 0) ? vd.childrenHashes.length : '—';
             var blueScore = vd.blueScore || header.blueScore || '—';
+            var blueWorkRaw = header.blueWork || ''; var blueWork = blueWorkRaw ? BigInt('0x' + blueWorkRaw).toLocaleString() : '—';
             var timestamp = header.timestamp ? new Date(parseInt(header.timestamp)).toLocaleString() : '—';
             var hashFull = (found.hash || '').substring(0, 14) + '...';
             var txCount = data.transactions ? data.transactions.length : (found.txCount || 0);
@@ -1815,7 +1816,7 @@ canvas.addEventListener('click', function(e) {
                 '<div class="insp-row"><span class="insp-label">Type</span><span class="insp-value ' + typeClass + '">' + typeLabel + '</span></div>' +
                 '<div class="insp-row"><span class="insp-label">Hash</span><span class="insp-value">' + hashFull + '</span></div>' +
                 '<div class="insp-row"><span class="insp-label">Time</span><span class="insp-value">' + timestamp + '</span></div>' +
-                '<div class="insp-row"><span class="insp-label">Blue Score</span><span class="insp-value">' + blueScore + '</span></div>' +
+                '<div class="insp-row"><span class="insp-label">DAA Score</span><span class="insp-value">' + (header.daaScore || '—') + '</span></div>' + '<div class="insp-row"><span class="insp-label">Blue Score</span><span class="insp-value">' + blueScore + '</span></div>' + '<div class="insp-row"><span class="insp-label">Work</span><span class="insp-value">' + blueWork + '</span></div>' +
                 '<div class="insp-row"><span class="insp-label">Transactions</span><span class="insp-value">' + txCount + '</span></div>' +
                 '<div class="insp-row"><span class="insp-label">Amount</span><span class="insp-value insp-cyan">' + kasText + '</span></div>' +
                 '<div class="insp-row"><span class="insp-label">Parents</span><span class="insp-value">' + parentCount + '</span></div>' +
@@ -1828,11 +1829,6 @@ canvas.addEventListener('click', function(e) {
         });
 });
 
-
-// Close inspector when tapping canvas background
-canvas.addEventListener('touchstart', function(e) {
-    // Let the click handler manage this via the same logic
-});
 
     // ── START ──
     fetchBlockDAG();
